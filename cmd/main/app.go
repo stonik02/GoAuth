@@ -11,6 +11,7 @@ import (
 	"github.com/stonik02/proxy_service/internal/auth"
 	"github.com/stonik02/proxy_service/internal/config"
 	"github.com/stonik02/proxy_service/internal/person"
+	"github.com/stonik02/proxy_service/internal/roles"
 	"github.com/stonik02/proxy_service/pkg/logging"
 	"github.com/stonik02/proxy_service/pkg/logging/db/postgresql"
 	_ "github.com/stonik02/proxy_service/pkg/logging/db/postgresql"
@@ -25,13 +26,13 @@ func main() {
 	cfg := config.GetConfig()
 
 	// init db postgreSQL
-	dbClient, err := postgresql.NewClient(context.TODO(), cfg.Storage)
+	dbClient, err := postgresql.NewClient(context.TODO(), 5, cfg.Storage)
 	if err != nil {
 		logger.Fatalf("fatal error: %s", err)
 	}
 
 	personRepository := person.NewRepository(dbClient, &logger)
-	logger.Info("register user handler")
+	logger.Info("register person handler")
 	personHandler := person.NewHandler(logger, personRepository)
 	personHandler.Register(router)
 
@@ -39,6 +40,11 @@ func main() {
 	logger.Info("register auth handler")
 	authHandler := auth.NewHandler(logger, authRepository)
 	authHandler.Register(router)
+
+	rolesRepository := roles.NewRepository(dbClient, &logger)
+	logger.Info("register roles handler")
+	rolesHandler := roles.NewHandler(logger, rolesRepository)
+	rolesHandler.Register(router)
 
 	start(router, cfg)
 }
