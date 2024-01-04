@@ -1,0 +1,13 @@
+package auth
+
+import (
+	"context"
+
+	"github.com/stonik02/proxy_service/internal/person"
+)
+
+type Repository interface {
+	Register(ctx context.Context, dto RegisterDto) (*person.Person, error)
+	Auth(ctx context.Context, dto AuthDto) (AuthResponseDto, error)
+	Refresh(ctx context.Context, dto RefreshDto) (RefreshResponseDto, error)
+}
