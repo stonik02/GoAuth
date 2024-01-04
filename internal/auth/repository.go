@@ -25,11 +25,7 @@ func NewRepository(client postgresql.Client, logger *logging.Logger, personRepos
 
 // Register implements Repository.
 func (r *repository) Register(ctx context.Context, dto RegisterDto) (*person.Person, error) {
-	userExist, err := r.personRepository.FindByEmail(ctx, dto.Email)
-	if err != nil {
-		r.logger.Errorf("Sql error: %s", err)
-		return nil, err
-	}
+	userExist := r.personRepository.FindByEmail(ctx, dto.Email)
 	if userExist != 0 {
 		newErr := fmt.Errorf("Registration error: user with email = %s is exist", dto.Email)
 		r.logger.Error(newErr)
@@ -43,7 +39,7 @@ func (r *repository) Register(ctx context.Context, dto RegisterDto) (*person.Per
 		Password: dto.Password,
 	}
 
-	err = r.personRepository.Create(ctx, &newPerson)
+	err := r.personRepository.Create(ctx, &newPerson)
 
 	if err != nil {
 		r.logger.Errorf("Sql error: %s", err)
@@ -53,8 +49,25 @@ func (r *repository) Register(ctx context.Context, dto RegisterDto) (*person.Per
 }
 
 // Auth implements Repository.
-func (r *repository) Auth(ctx context.Context, dto AuthDto) (AuthResponseDto, error) {
-	panic("unimplemented")
+func (r *repository) Auth(ctx context.Context, dto person.AuthDto) (AuthResponseDto, error) {
+	var response AuthResponseDto
+	hasPersonInDb := r.personRepository.AuthPerson(ctx, dto)
+	if !hasPersonInDb {
+		newErr := fmt.Errorf("Wrong data")
+		return AuthResponseDto{}, newErr
+	}
+
+	//TODO: Тут получаем jwt, все дела
+	//
+	//
+	//
+
+	response = AuthResponseDto{
+		accessToken: "Типо токен",
+	}
+
+	return response, nil
+
 }
 
 // Refresh implements Repository.

@@ -8,6 +8,6 @@ import (
 
 type Repository interface {
 	Register(ctx context.Context, dto RegisterDto) (*person.Person, error)
-	Auth(ctx context.Context, dto AuthDto) (AuthResponseDto, error)
+	Auth(ctx context.Context, dto person.AuthDto) (AuthResponseDto, error)
 	Refresh(ctx context.Context, dto RefreshDto) (RefreshResponseDto, error)
 }

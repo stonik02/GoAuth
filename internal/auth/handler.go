@@ -8,6 +8,7 @@ import (
 
 	"github.com/julienschmidt/httprouter"
 	"github.com/stonik02/proxy_service/internal/handlers"
+	"github.com/stonik02/proxy_service/internal/person"
 	"github.com/stonik02/proxy_service/pkg/logging"
 )
 
@@ -41,8 +42,8 @@ func (h *handler) Registration(w http.ResponseWriter, r *http.Request, params ht
 	if err != nil {
 		return
 	}
-	// TODO:
-	fmt.Printf("DTO == %s", dto)
+	// TODO: Где хешировать пароль?
+	// TODO: валидация данных
 
 	newPerson, err := h.repository.Register(context.TODO(), dto)
 
@@ -58,7 +59,26 @@ func (h *handler) Registration(w http.ResponseWriter, r *http.Request, params ht
 }
 
 func (h *handler) Auth(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
-
+	var dto person.AuthDto
+	err := json.NewDecoder(r.Body).Decode(&dto)
+	if err != nil {
+		return
+	}
+	validateData, err := h.repository.Auth(context.TODO(), dto)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("Wrong data"))
+		return
+	}
+	allBytes, err := json.Marshal(validateData)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte("Server error"))
+		return
+	}
+	fmt.Print(allBytes)
+	w.WriteHeader(http.StatusFound)
+	w.Write([]byte([]byte("Типо токен")))
 }
 
 func (h *handler) Refresh(w http.ResponseWriter, r *http.Request, params httprouter.Params) {

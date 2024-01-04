@@ -39,7 +39,7 @@ func (r *repository) Create(ctx context.Context, person *Person) error {
 	if err != nil {
 		return err
 	}
-	query := `insert into public.person (name, email, hash_password) values ($1, $2, $3) returning id;`
+	query := `INSERT INTO public.person (name, email, hash_password) VALUES ($1, $2, $3) RETURNING id;`
 	r.logger.Tracef("Get query: %s", query)
 
 	err = r.client.QueryRow(ctx, query, person.Name, person.Email, HashPassword).Scan(&person.Id)
@@ -57,28 +57,22 @@ func (r *repository) Create(ctx context.Context, person *Person) error {
 
 // Delete implements user.Repository.
 func (r *repository) Delete(ctx context.Context, id string) error {
-	query := "DELETE from public.person where id = $1;"
+	query := "DELETE FROM public.person WHERE id = $1;"
 	r.logger.Tracef("Get query: %s", query)
 
-	err := r.client.QueryRow(ctx, query, id)
-	if err != nil {
+	r.client.QueryRow(ctx, query, id)
 
-		r.logger.Error("SQL error: %s", err)
-		error := fmt.Errorf("SQL error: %s", err)
-		return error
-
-	}
 	return nil
 }
 
 // FindAll implements user.Repository.
 func (r *repository) FindAll(ctx context.Context) (p []ResponseUserDto, err error) {
-	// query := `insert into public person (name, age) values ($1, $2) returning id`
-	q2 := `select id, name, email from public.person;`
+	query := `SELECT id, name, email FROM public.person;`
+	r.logger.Tracef("Get query: %s", query)
 
-	rows, err := r.client.Query(context.TODO(), q2)
+	rows, err := r.client.Query(context.TODO(), query)
 
-	persons := make([]ResponseUserDto, 0)
+	var persons []ResponseUserDto
 
 	for rows.Next() {
 		var prs ResponseUserDto
@@ -96,28 +90,18 @@ func (r *repository) FindAll(ctx context.Context) (p []ResponseUserDto, err erro
 
 		persons = append(persons, prs)
 	}
-	fmt.Println(persons)
 
 	return persons, nil
 }
 
 // FindOne implements user.Repository.
 func (r *repository) FindOne(ctx context.Context, id string) (p ResponseUserDto, err error) {
-	query := "select id, name, email from public.person where id = $1;"
+	query := "SELECT id, name, email FROM public.person WHERE id = $1;"
 	r.logger.Tracef("Get query: %s", query)
 
 	var prs ResponseUserDto
 
-	err = r.client.QueryRow(ctx, query, "234234234234").Scan(&prs.Id, &prs.Name, &prs.Email)
-	if err != nil {
-		var pgErr *pgconn.PgError
-		if errors.As(err, &pgErr) {
-			pgErr = err.(*pgconn.PgError)
-			newErr := fmt.Errorf(fmt.Sprintf("SQL Error: %s, Detail: %s, Where: %s, Code: %s, SQLState: %s", pgErr.Message, pgErr.Detail, pgErr.Where, pgErr.Code, pgErr.SQLState()))
-			r.logger.Error(newErr)
-			return ResponseUserDto{}, newErr
-		}
-	}
+	r.client.QueryRow(ctx, query, "234234234234").Scan(&prs.Id, &prs.Name, &prs.Email)
 
 	if prs.Id == "" {
 		newErr := fmt.Errorf("User does not exist")
@@ -130,8 +114,8 @@ func (r *repository) FindOne(ctx context.Context, id string) (p ResponseUserDto,
 // Update implements user.Repository.
 func (r *repository) Update(ctx context.Context, person *Person) error {
 	var query_get_person, query_update_person string
-	query_get_person = "select id, name, email from public.person where id = $1;"
-	query_update_person = "update public.person set (name, email) = ($1, $2) where id = $3;"
+	query_get_person = "SELECT id, name, email FROM public.person WHERE id = $1;"
+	query_update_person = "UPDATE public.person SET (name, email) = ($1, $2) WHERE id = $3;"
 	var PersonInDb Person
 
 	r.logger.Tracef("Get query: %s", query_get_person)
@@ -155,21 +139,30 @@ func (r *repository) Update(ctx context.Context, person *Person) error {
 	return nil
 }
 
-func (r *repository) FindByEmail(ctx context.Context, email string) (userExist int64, err error) {
-	query_check_user_exist := `select email from public.person where email = $1;`
+func (r *repository) FindByEmail(ctx context.Context, email string) int {
+	query_check_user_exist := `SELECT email FROM public.person WHERE email = $1;`
 	r.logger.Tracef("Get query: %s", query_check_user_exist)
-	userExist = 0
+	userExist := 0
 
-	err = r.client.QueryRow(ctx, query_check_user_exist, email).Scan(&userExist)
-	if err != nil {
-		var pgErr *pgconn.PgError
-		if errors.As(err, &pgErr) {
-			pgErr = err.(*pgconn.PgError)
-			newErr := fmt.Errorf(fmt.Sprintf("SQL Error: %s, Detail: %s, Where: %s, Code: %s, SQLState: %s", pgErr.Message, pgErr.Detail, pgErr.Where, pgErr.Code, pgErr.SQLState()))
-			r.logger.Error(newErr)
-			return 0, newErr
-		}
+	r.client.QueryRow(ctx, query_check_user_exist, email).Scan(&userExist)
+
+	return userExist
+}
+
+type AuthDto struct {
+	Password string
+	Email    string
+}
+
+// AuthPerson implements Repository.
+func (r *repository) AuthPerson(ctx context.Context, dto AuthDto) bool {
+	query := `SELECT email, hash_password FROM public.person WHERE email = $1`
+	r.logger.Tracef("Get query: %s", query)
+
+	var userData AuthDto
+	r.client.QueryRow(ctx, query, dto.Email).Scan(&userData.Email, &userData.Password)
+	if userData.Email == "" {
+		return false
 	}
-
-	return userExist, nil
+	return CheckPasswordHash(dto.Password, userData.Password)
 }

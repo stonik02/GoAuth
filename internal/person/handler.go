@@ -12,11 +12,18 @@ import (
 
 var _ handlers.Handler = &handler{}
 
-// Получить роли пользователя из связи многие ко многим:
+// Получить роли всех пользователей :
 //
-// select p.id as person_id, p.name, p.age, r.role_name from person p
-// left join user_roles ur on ur.user_id = p.id
-// left join roles r on r.id = ur.role_id;
+// SELECT p.id as person_id, p.name, p.email,
+//        array_agg(r.role_name) as roles
+// FROM person p
+// LEFT JOIN user_roles ur ON ur.user_id = p.id
+// LEFT JOIN roles r ON r.id = ur.role_id
+// GROUP BY p.id, p.name, p.email;
+
+// Получить роли по uuid пользователя
+// select r.id, r.role_name from roles r
+// left join user_roles ur on ur.user_id = '2cd26a26-f03c-411e-b1dd-345eb0a49fbc' where r.id = ur.role_id;
 
 const (
 	usersURL = "/users"
