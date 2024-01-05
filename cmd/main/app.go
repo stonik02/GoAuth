@@ -17,6 +17,11 @@ import (
 	_ "github.com/stonik02/proxy_service/pkg/logging/db/postgresql"
 )
 
+// TODO: Сделать возможность сразу присваивать несколько ролей
+// TODO: Сделать jwt
+// TODO: Сделать валидацию данных
+// TODO: Сделать middleware на permission к разным ручкам
+
 func main() {
 	logger := logging.GetLogger()
 

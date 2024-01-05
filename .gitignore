@@ -1,2 +1,4 @@
 config.yml
 cmd/main/logs/*
+cmd/main/logs/all.log
+.vscode/launch.json

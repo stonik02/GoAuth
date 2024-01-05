@@ -42,8 +42,6 @@ func (h *handler) Registration(w http.ResponseWriter, r *http.Request, params ht
 	if err != nil {
 		return
 	}
-	// TODO: Где хешировать пароль?
-	// TODO: валидация данных
 
 	newPerson, err := h.repository.Register(context.TODO(), dto)
 
@@ -54,6 +52,11 @@ func (h *handler) Registration(w http.ResponseWriter, r *http.Request, params ht
 	}
 
 	allBytes, err := json.Marshal(newPerson)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte("Server error"))
+		return
+	}
 	w.WriteHeader(201)
 	w.Write([]byte(allBytes))
 }
@@ -64,18 +67,21 @@ func (h *handler) Auth(w http.ResponseWriter, r *http.Request, params httprouter
 	if err != nil {
 		return
 	}
+
 	validateData, err := h.repository.Auth(context.TODO(), dto)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		w.Write([]byte("Wrong data"))
 		return
 	}
+
 	allBytes, err := json.Marshal(validateData)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte("Server error"))
 		return
 	}
+
 	fmt.Print(allBytes)
 	w.WriteHeader(http.StatusFound)
 	w.Write([]byte([]byte("Типо токен")))

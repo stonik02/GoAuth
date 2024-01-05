@@ -32,7 +32,6 @@ func (r *repository) Register(ctx context.Context, dto RegisterDto) (*person.Per
 		return nil, newErr
 	}
 
-	// TODO: На каком этапе хешировать пароль???
 	newPerson := person.Person{
 		Name:     dto.Name,
 		Email:    dto.Email,
@@ -53,7 +52,7 @@ func (r *repository) Auth(ctx context.Context, dto person.AuthDto) (AuthResponse
 	var response AuthResponseDto
 	hasPersonInDb := r.personRepository.AuthPerson(ctx, dto)
 	if !hasPersonInDb {
-		newErr := fmt.Errorf("Wrong data")
+		newErr := fmt.Errorf("wrong data")
 		return AuthResponseDto{}, newErr
 	}
 
@@ -63,7 +62,8 @@ func (r *repository) Auth(ctx context.Context, dto person.AuthDto) (AuthResponse
 	//
 
 	response = AuthResponseDto{
-		accessToken: "Типо токен",
+		accessToken:  "Типо токен",
+		refreshToken: "Типо токен",
 	}
 
 	return response, nil
