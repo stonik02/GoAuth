@@ -23,13 +23,21 @@ func NewRepository(client postgresql.Client, logger *logging.Logger, personRepos
 	}
 }
 
+func (r *repository) CheckUserExist(ctx context.Context, email string) error {
+	_, err := r.personRepository.FindByEmail(ctx, email)
+	if err == nil {
+		newErr := fmt.Errorf("Registration error: user with email = %s is exist", email)
+		r.logger.Error(newErr)
+		return newErr
+	}
+	return nil
+}
+
 // Register implements Repository.
 func (r *repository) Register(ctx context.Context, dto RegisterDto) (*person.Person, error) {
-	userExist := r.personRepository.FindByEmail(ctx, dto.Email)
-	if userExist != 0 {
-		newErr := fmt.Errorf("Registration error: user with email = %s is exist", dto.Email)
-		r.logger.Error(newErr)
-		return nil, newErr
+	err := r.CheckUserExist(ctx, dto.Email)
+	if err != nil {
+		return nil, err
 	}
 
 	newPerson := person.Person{
@@ -37,11 +45,10 @@ func (r *repository) Register(ctx context.Context, dto RegisterDto) (*person.Per
 		Email:    dto.Email,
 		Password: dto.Password,
 	}
-
-	err := r.personRepository.Create(ctx, &newPerson)
+	err = r.personRepository.Create(ctx, &newPerson)
 
 	if err != nil {
-		r.logger.Errorf("Sql error: %s", err)
+		r.logger.Error(err)
 		return nil, err
 	}
 	return &newPerson, nil

@@ -2,167 +2,160 @@ package person
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
-	"github.com/jackc/pgconn"
+	"github.com/jackc/pgx/v4"
 	"github.com/stonik02/proxy_service/pkg/logging"
-	"github.com/stonik02/proxy_service/pkg/logging/db/postgresql"
 	"golang.org/x/crypto/bcrypt"
 )
 
 type repository struct {
-	client postgresql.Client
-	logger *logging.Logger
+	logger   *logging.Logger
+	pgClient PgSQLInterface
 }
 
-func NewRepository(client postgresql.Client, logger *logging.Logger) Repository {
+func NewRepository(logger *logging.Logger, pgClient PgSQLInterface) Repository {
 	return &repository{
-		client: client,
-		logger: logger,
+		logger:   logger,
+		pgClient: pgClient,
 	}
 }
 
+// HashPassword hashes the user's password
 func HashPassword(password string) (string, error) {
 	bytes, err := bcrypt.GenerateFromPassword([]byte(password), 10)
 	return string(bytes), err
 }
 
-func CheckPasswordHash(password, hash string) bool {
-	err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
+// CheckPasswordHash compares a hashed password with an unhashed password
+func CheckPasswordHash(password, hashPassword string) bool {
+	err := bcrypt.CompareHashAndPassword([]byte(hashPassword), []byte(password))
 	return err == nil
 }
 
-// Create implements user.Repository.
-func (r *repository) Create(ctx context.Context, person *Person) error {
-	HashPassword, err := HashPassword(person.Password)
-	if err != nil {
-		return err
-	}
-	query := `INSERT INTO public.person (name, email, hash_password) VALUES ($1, $2, $3) RETURNING id;`
-	r.logger.Tracef("Get query: %s", query)
-
-	err = r.client.QueryRow(ctx, query, person.Name, person.Email, HashPassword).Scan(&person.Id)
-	if err != nil {
-		var pgErr *pgconn.PgError
-		if errors.As(err, &pgErr) {
-			pgErr = err.(*pgconn.PgError)
-			newErr := fmt.Errorf(fmt.Sprintf("SQL Error: %s, Detail: %s, Where: %s, Code: %s, SQLState: %s", pgErr.Message, pgErr.Detail, pgErr.Where, pgErr.Code, pgErr.SQLState()))
-			r.logger.Error(newErr)
-			return newErr
-		}
-	}
-	return nil
-}
-
-// Delete implements user.Repository.
-func (r *repository) Delete(ctx context.Context, id string) error {
-	query := "DELETE FROM public.person WHERE id = $1;"
-	r.logger.Tracef("Get query: %s", query)
-
-	r.client.QueryRow(ctx, query, id)
-
-	return nil
-}
-
-// FindAll implements user.Repository.
-func (r *repository) FindAll(ctx context.Context) (p []ResponseUserDto, err error) {
-	query := `SELECT id, name, email FROM public.person;`
-	r.logger.Tracef("Get query: %s", query)
-
-	rows, err := r.client.Query(context.TODO(), query)
-
+// ScanPersonFromPgxRowsInStruct scans the persons retrieved
+// from the database in type pgr.Rows into struct Person.
+func (r *repository) ScanPersonFromPgxRowsInStruct(rows pgx.Rows) ([]ResponseUserDto, error) {
 	var persons []ResponseUserDto
 
 	for rows.Next() {
 		var prs ResponseUserDto
-
-		err = rows.Scan(&prs.Id, &prs.Name, &prs.Email)
+		err := rows.Scan(&prs.Id, &prs.Name, &prs.Email)
 		if err != nil {
-			var pgErr *pgconn.PgError
-			if errors.As(err, &pgErr) {
-				pgErr = err.(*pgconn.PgError)
-				newErr := fmt.Errorf(fmt.Sprintf("SQL Error: %s, Detail: %s, Where: %s, Code: %s, SQLState: %s", pgErr.Message, pgErr.Detail, pgErr.Where, pgErr.Code, pgErr.SQLState()))
-				r.logger.Error(newErr)
-				return nil, newErr
-			}
+			return nil, r.pgClient.LoggingSQLPgqError(err)
 		}
-
 		persons = append(persons, prs)
 	}
-
 	return persons, nil
 }
 
-// FindOne implements user.Repository.
-func (r *repository) FindOne(ctx context.Context, id string) (p ResponseUserDto, err error) {
-	query := "SELECT id, name, email FROM public.person WHERE id = $1;"
-	r.logger.Tracef("Get query: %s", query)
-
-	var prs ResponseUserDto
-
-	r.client.QueryRow(ctx, query, "234234234234").Scan(&prs.Id, &prs.Name, &prs.Email)
-
-	if prs.Id == "" {
-		newErr := fmt.Errorf("User does not exist")
-		return ResponseUserDto{}, newErr
+// CheckUserExist checks that the user id is not a null string
+func CheckUserExist(person ResponseUserDto) error {
+	if person.Id == "" {
+		newErr := fmt.Errorf("user does not exist")
+		return newErr
 	}
-
-	return prs, nil
+	return nil
 }
 
-// Update implements user.Repository.
-func (r *repository) Update(ctx context.Context, person *Person) error {
-	var query_get_person, query_update_person string
-	query_get_person = "SELECT id, name, email FROM public.person WHERE id = $1;"
-	query_update_person = "UPDATE public.person SET (name, email) = ($1, $2) WHERE id = $3;"
-	var PersonInDb Person
+// CheckingFieldsPersonHaveBeenChanged compares the fields of the user
+// in the database with those of the user sent by the user.
+// If a field in personDto has been changed,
+// it is changed in personInDatabase as well.
+func CheckingFieldsPersonHaveBeenChanged(personDto *Person, personInDatabase ResponseUserDto) ResponseUserDto {
+	if personDto.Name != "" {
+		personInDatabase.Name = personDto.Name
+	}
+	if personDto.Email != "" {
+		personInDatabase.Email = personDto.Email
+	}
+	return personInDatabase
+}
 
-	r.logger.Tracef("Get query: %s", query_get_person)
-	err := r.client.QueryRow(ctx, query_get_person, person.Id).Scan(&PersonInDb.Id, &PersonInDb.Name, &PersonInDb.Email)
+// Create adds a new user to the database.
+// Params:
+// ctx - context.Context,
+// Person :
+// id - string(uuid)
+// Name - string
+// Email - string (unique)
+// Password - string (will be hash)
+func (r *repository) Create(ctx context.Context, person *Person) error {
+	// Hash password
+	HashPassword, err := HashPassword(person.Password)
 	if err != nil {
-		r.logger.Error(err)
+		r.logger.Errorf("CreatePerson error: %s", err)
 		return err
 	}
-	if person.Name != "" {
-		PersonInDb.Name = person.Name
-	}
-	if person.Email != "" {
-		PersonInDb.Email = person.Email
-	}
-	r.logger.Tracef("Update query: %s", query_update_person)
-	_, err = r.client.Query(ctx, query_update_person, PersonInDb.Name, PersonInDb.Email, PersonInDb.Id)
+	person.Password = HashPassword
+
+	// Create Person in DB
+	err = r.pgClient.CreatePersonInDB(ctx, person)
 	if err != nil {
-		r.logger.Error(err)
+		// SQL Error
 		return err
 	}
 	return nil
 }
 
-func (r *repository) FindByEmail(ctx context.Context, email string) int {
-	query_check_user_exist := `SELECT email FROM public.person WHERE email = $1;`
-	r.logger.Tracef("Get query: %s", query_check_user_exist)
-	userExist := 0
-
-	r.client.QueryRow(ctx, query_check_user_exist, email).Scan(&userExist)
-
-	return userExist
+// Delete deletes a user from the database by id.
+func (r *repository) Delete(ctx context.Context, id string) {
+	// Send a query to the database
+	r.pgClient.DeletePersonFromDB(ctx, id)
 }
 
-type AuthDto struct {
-	Password string
-	Email    string
-}
-
-// AuthPerson implements Repository.
-func (r *repository) AuthPerson(ctx context.Context, dto AuthDto) bool {
-	query := `SELECT email, hash_password FROM public.person WHERE email = $1`
-	r.logger.Tracef("Get query: %s", query)
-
-	var userData AuthDto
-	r.client.QueryRow(ctx, query, dto.Email).Scan(&userData.Email, &userData.Password)
-	if userData.Email == "" {
-		return false
+// FindAll retrieves all users.
+func (r *repository) FindAll(ctx context.Context) (p []ResponseUserDto, err error) {
+	// Send a query to the database to retrieve all users
+	rows, err := r.pgClient.FindAllPersonFromDB(ctx)
+	if err != nil {
+		return nil, err
 	}
+
+	// Scan the users into the structure and return
+	return r.ScanPersonFromPgxRowsInStruct(rows)
+}
+
+// FindOne returns a specific person by id.
+func (r *repository) FindOne(ctx context.Context, id string) (p ResponseUserDto, err error) {
+	person := r.pgClient.FindOne(ctx, id)
+	// Check if such a person exists
+	if err = CheckUserExist(person); err != nil {
+		return ResponseUserDto{}, err
+	}
+
+	return person, nil
+}
+
+// Update updates the user's data in the database.
+// The method works simultaneously as Patch and Put.
+// You can change name and email.
+func (r *repository) Update(ctx context.Context, person *Person) error {
+
+	personInDb, err := r.FindOne(ctx, person.Id)
+	if err != nil {
+		r.logger.Errorf("Update person error: %s", err)
+		return err
+	}
+
+	personInDb = CheckingFieldsPersonHaveBeenChanged(person, personInDb)
+
+	return r.pgClient.UpdatePerson(ctx, personInDb)
+}
+
+// FindByEmail returns a specific person by email.
+func (r *repository) FindByEmail(ctx context.Context, email string) (ResponseUserDto, error) {
+	person := r.pgClient.FindPersonByEmail(ctx, email)
+	if err := CheckUserExist(person); err != nil {
+		return ResponseUserDto{}, err
+	}
+	return person, nil
+}
+
+// AuthPerson сomparing the data entered by the user
+// with the data in the database to authorize the user.
+// If the data is valid, returns true, otherwise returns false.
+func (r *repository) AuthPerson(ctx context.Context, dto AuthDto) bool {
+	userData := r.pgClient.GetPersonDataForAuth(ctx, dto)
 	return CheckPasswordHash(dto.Password, userData.Password)
 }

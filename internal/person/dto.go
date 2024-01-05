@@ -5,3 +5,8 @@ type ResponseUserDto struct {
 	Name  string
 	Email string
 }
+
+type AuthDto struct {
+	Password string
+	Email    string
+}

@@ -36,7 +36,8 @@ func main() {
 		logger.Fatalf("fatal error: %s", err)
 	}
 
-	personRepository := person.NewRepository(dbClient, &logger)
+	personSQLClient := person.NewPgClient(dbClient, &logger)
+	personRepository := person.NewRepository(&logger, personSQLClient)
 	logger.Info("register person handler")
 	personHandler := person.NewHandler(logger, personRepository)
 	personHandler.Register(router)
