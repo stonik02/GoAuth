@@ -7,6 +7,7 @@ import (
 
 	"github.com/jackc/pgconn"
 	"github.com/jackc/pgx/v4"
+
 	"github.com/stonik02/proxy_service/pkg/logging"
 	"github.com/stonik02/proxy_service/pkg/logging/db/postgresql"
 )
@@ -44,6 +45,7 @@ const (
 	queryGetEmailAndPAsswordPersonForAuth = `SELECT email, hash_password FROM public.person WHERE email = $1`
 )
 
+// LoggingSQLPgqError logs sql errors of type *pgconn.PgError
 func (pg *PgSQLClient) LoggingSQLPgqError(err error) error {
 	var pgErr *pgconn.PgError
 	if errors.As(err, &pgErr) {

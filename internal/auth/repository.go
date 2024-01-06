@@ -4,9 +4,10 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/stonik02/proxy_service/internal/person"
+	person "github.com/stonik02/proxy_service/internal/persons"
 	"github.com/stonik02/proxy_service/pkg/logging"
 	"github.com/stonik02/proxy_service/pkg/logging/db/postgresql"
+
 )
 
 type repository struct {
@@ -34,7 +35,7 @@ func (r *repository) CheckUserExist(ctx context.Context, email string) error {
 }
 
 // Register implements Repository.
-func (r *repository) Register(ctx context.Context, dto RegisterDto) (*person.Person, error) {
+func (r *repository) RegisterPerson(ctx context.Context, dto RegisterDto) (*person.Person, error) {
 	err := r.CheckUserExist(ctx, dto.Email)
 	if err != nil {
 		return nil, err

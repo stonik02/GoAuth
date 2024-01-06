@@ -7,8 +7,9 @@ import (
 	"net/http"
 
 	"github.com/julienschmidt/httprouter"
+
 	"github.com/stonik02/proxy_service/internal/handlers"
-	"github.com/stonik02/proxy_service/internal/person"
+	"github.com/stonik02/proxy_service/internal/persons"
 	"github.com/stonik02/proxy_service/pkg/logging"
 )
 
@@ -43,7 +44,7 @@ func (h *handler) Registration(w http.ResponseWriter, r *http.Request, params ht
 		return
 	}
 
-	newPerson, err := h.repository.Register(context.TODO(), dto)
+	newPerson, err := h.repository.RegisterPerson(context.TODO(), dto)
 
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)

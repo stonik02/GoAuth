@@ -8,13 +8,13 @@ import (
 	"time"
 
 	"github.com/julienschmidt/httprouter"
+
 	"github.com/stonik02/proxy_service/internal/auth"
 	"github.com/stonik02/proxy_service/internal/config"
-	"github.com/stonik02/proxy_service/internal/person"
+	"github.com/stonik02/proxy_service/internal/persons"
 	"github.com/stonik02/proxy_service/internal/roles"
 	"github.com/stonik02/proxy_service/pkg/logging"
 	"github.com/stonik02/proxy_service/pkg/logging/db/postgresql"
-	_ "github.com/stonik02/proxy_service/pkg/logging/db/postgresql"
 )
 
 // TODO: Рефакторинг auth
@@ -49,7 +49,8 @@ func main() {
 	authHandler := auth.NewHandler(logger, authRepository)
 	authHandler.Register(router)
 
-	rolesRepository := roles.NewRepository(dbClient, &logger)
+	rolesSQLClient := roles.NewPgClient(dbClient, &logger)
+	rolesRepository := roles.NewRepository(&logger, rolesSQLClient)
 	logger.Info("register roles handler")
 	rolesHandler := roles.NewHandler(logger, rolesRepository)
 	rolesHandler.Register(router)

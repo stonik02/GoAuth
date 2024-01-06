@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"github.com/julienschmidt/httprouter"
+
 	"github.com/stonik02/proxy_service/internal/handlers"
 	"github.com/stonik02/proxy_service/pkg/logging"
 )
