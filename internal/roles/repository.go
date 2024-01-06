@@ -28,7 +28,7 @@ const (
 	SELECT id, role_name FROM roles
 	`
 	query_get_user_with_roles = `
-	SELECT p.name,p.email, r.id,  r.role_name AS roles
+	SELECT p.name,p.email, r.id, r.role_name AS roles
 	FROM roles r
 	LEFT JOIN user_roles ur ON ur.role_id = r.id
 	LEFT JOIN person p ON p.id = ur.user_id

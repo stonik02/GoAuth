@@ -17,6 +17,8 @@ import (
 	_ "github.com/stonik02/proxy_service/pkg/logging/db/postgresql"
 )
 
+// TODO: Рефакторинг auth
+// TODO: Рефакторинг roles
 // TODO: Сделать возможность сразу присваивать несколько ролей
 // TODO: Сделать jwt
 // TODO: Сделать валидацию данных
