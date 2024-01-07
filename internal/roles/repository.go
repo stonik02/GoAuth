@@ -21,22 +21,6 @@ func NewRepository(logger *logging.Logger, pgClient PgSQLInterface) Repository {
 	}
 }
 
-// ScanRolesFromPgxRowsInStruct scans the persons retrieved
-// from the database in type pgr.Rows into struct Person.
-func (r *repository) ScanRolesFromPgxRowsInStruct(rows pgx.Rows) ([]Role, error) {
-	var roles []Role
-
-	for rows.Next() {
-		var role Role
-		err := rows.Scan(&role.Id, &role.RoleName)
-		if err != nil {
-			return nil, r.pgClient.LoggingSQLPgqError(err)
-		}
-		roles = append(roles, role)
-	}
-	return roles, nil
-}
-
 // GetAllRoles implements Repository.
 func (r *repository) GetAllRoles(ctx context.Context) ([]Role, error) {
 	rows, err := r.pgClient.SendsQueryToGetAllRoles(ctx)
@@ -52,19 +36,20 @@ func (r *repository) GetAllRoles(ctx context.Context) ([]Role, error) {
 	return roles, nil
 }
 
-// ScanRoleIdAndRoleNameToRoleStruct takes two string arrays as input:
-// role_id []string
-// role_name []string
-// Based on them it creates the []Role structure and returns it.
-func ScanRoleIdAndRoleNameToRoleStruct(role_id []string, role_name []string) []Role {
+// ScanRolesFromPgxRowsInStruct scans the persons retrieved
+// from the database in type pgr.Rows into struct Person.
+func (r *repository) ScanRolesFromPgxRowsInStruct(rows pgx.Rows) ([]Role, error) {
 	var roles []Role
-	for i := 0; i < len(role_id); i++ {
+
+	for rows.Next() {
 		var role Role
-		role.Id = role_id[i]
-		role.RoleName = role_name[i]
+		err := rows.Scan(&role.Id, &role.RoleName)
+		if err != nil {
+			return nil, r.pgClient.LoggingSQLPgqError(err)
+		}
 		roles = append(roles, role)
 	}
-	return roles
+	return roles, nil
 }
 
 // ScanPersonDataWitchRolesInAllUserRolesDto input a row with the following fields:
@@ -88,6 +73,18 @@ func (r *repository) ScanPersonDataWitchRolesInAllUserRolesDto(row pgx.Row) (All
 	return userRoles, nil
 }
 
+// ScanRoleIdAndRoleNameToRoleStruct takes two string arrays as input.
+func ScanRoleIdAndRoleNameToRoleStruct(role_id []string, role_name []string) []Role {
+	var roles []Role
+	for i := 0; i < len(role_id); i++ {
+		var role Role
+		role.Id = role_id[i]
+		role.RoleName = role_name[i]
+		roles = append(roles, role)
+	}
+	return roles
+}
+
 // GetUserWithRoles gets the user's id, email, name and a list of their roles by uuid.
 func (r *repository) GetUserWithRoles(ctx context.Context, userId string) (AllUserRolesDto, error) {
 	row := r.pgClient.SendsQueryToGetUserWithRoles(ctx, userId)
@@ -96,9 +93,6 @@ func (r *repository) GetUserWithRoles(ctx context.Context, userId string) (AllUs
 }
 
 // AssignRole adds a user by uuid to a role, also by uuid.
-// AssignRoleDto:
-// UserId string `json: "userId"`
-// RoleId string `json: "roleId"`
 func (r *repository) AssignRole(ctx context.Context, dto AssignRoleDto) error {
 	err := r.pgClient.SendsQueryToAssignRole(ctx, dto)
 	if err != nil {
@@ -109,9 +103,6 @@ func (r *repository) AssignRole(ctx context.Context, dto AssignRoleDto) error {
 }
 
 // TakeRole removes the role from the user by uuid, also by uuid.
-// TakeRoleDto:
-// UserId string `json: "userId"`
-// RoleId string `json: "roleId"`
 func (r *repository) TakeRole(ctx context.Context, dto TakeRoleDto) error {
 	err := r.pgClient.SendsQueryToTakeRole(ctx, dto)
 	if err != nil {
