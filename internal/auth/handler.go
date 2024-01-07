@@ -3,7 +3,6 @@ package auth
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"net/http"
 
 	"github.com/julienschmidt/httprouter"
@@ -22,24 +21,36 @@ const (
 	refreshURL  = "/refresh"
 )
 
+const (
+	admin     = "role_admin"
+	user      = "role_user"
+	superuser = "role_superuser"
+	moder     = "role_moder"
+)
+
 type handler struct {
-	repository                Repository
-	logger                    logging.Logger
-	checkPermissionMiddleware middleware.AuthorizedRoleMiddleware
+	repository Repository
+	logger     logging.Logger
+	middleware middleware.AuthorizedRoleMiddleware
 }
 
 func NewHandler(logger logging.Logger, repository Repository, checkPermissionMiddleware middleware.AuthorizedRoleMiddleware) handlers.Handler {
 	return &handler{logger: logger,
-		repository:                repository,
-		checkPermissionMiddleware: checkPermissionMiddleware,
+		repository: repository,
+		middleware: checkPermissionMiddleware,
 	}
 }
 
 func (h *handler) Register(router *httprouter.Router) {
-	router.POST(registerURL, h.Registration)
-	router.POST(authURL, h.checkPermissionMiddleware.BasicAuth(h.Auth, "is_admin"))
-	router.POST(refreshURL, h.Refresh)
+	// Ручки с ограничениями
 
+	// router.POST(registerURL, h.middleware.BasicAuth(h.Registration, admin))
+	// router.POST(authURL, h.Auth)
+	// router.POST(refreshURL, h.Refresh)
+
+	router.POST(registerURL, h.Registration)
+	router.POST(authURL, h.Auth)
+	router.POST(refreshURL, h.Refresh)
 }
 
 func (h *handler) Registration(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
@@ -88,9 +99,8 @@ func (h *handler) Auth(w http.ResponseWriter, r *http.Request, params httprouter
 		return
 	}
 
-	fmt.Print(allBytes)
 	w.WriteHeader(http.StatusFound)
-	w.Write([]byte([]byte("Типо токен")))
+	w.Write([]byte([]byte(allBytes)))
 }
 
 func (h *handler) Refresh(w http.ResponseWriter, r *http.Request, params httprouter.Params) {

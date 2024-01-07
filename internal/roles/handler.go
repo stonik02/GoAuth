@@ -9,6 +9,7 @@ import (
 
 	"github.com/stonik02/proxy_service/internal/handlers"
 	"github.com/stonik02/proxy_service/pkg/logging"
+	"github.com/stonik02/proxy_service/pkg/middleware"
 )
 
 const (
@@ -17,16 +18,31 @@ const (
 	serverError = "Internal Server Error"
 )
 
+const (
+	admin     = "role_admin"
+	user      = "role_user"
+	superuser = "role_superuser"
+	moder     = "role_moder"
+)
+
 type handler struct {
 	repository Repository
 	logger     logging.Logger
+	middleware middleware.AuthorizedRoleMiddleware
 }
 
-func NewHandler(logger logging.Logger, repository Repository) handlers.Handler {
-	return &handler{logger: logger, repository: repository}
+func NewHandler(logger logging.Logger, repository Repository, middleware middleware.AuthorizedRoleMiddleware) handlers.Handler {
+	return &handler{logger: logger, repository: repository, middleware: middleware}
 }
 
 func (h *handler) Register(router *httprouter.Router) {
+	// Ручки с ограничениями
+
+	// router.GET(userRoleURL, h.middleware.BasicAuth(h.UserRolesList, user))
+	// router.GET(rolesURL, h.middleware.BasicAuth(h.RolesList, moder))
+	// router.POST(rolesURL, h.middleware.BasicAuth(h.AssignRole, superuser))
+	// router.DELETE(rolesURL, h.middleware.BasicAuth(h.TakeRole, superuser))
+
 	router.GET(userRoleURL, h.UserRolesList)
 	router.GET(rolesURL, h.RolesList)
 	router.POST(rolesURL, h.AssignRole)

@@ -11,6 +11,7 @@ import (
 
 	"github.com/stonik02/proxy_service/pkg/db/postgresql"
 	"github.com/stonik02/proxy_service/pkg/logging"
+
 )
 
 type PgSQLInterface interface {
@@ -19,7 +20,6 @@ type PgSQLInterface interface {
 	SendsQueryToGetUserWithRoles(ctx context.Context, userId string) pgx.Row
 	SendsQueryToAssignRole(ctx context.Context, dto AssignRoleDto) error
 	SendsQueryToTakeRole(ctx context.Context, dto TakeRoleDto) error
-	SendsQueryToGetUserRoleNames(ctx context.Context, userId string) (pgx.Rows, error)
 }
 
 type PgSQLClient struct {
@@ -54,11 +54,6 @@ const (
 
 	queryAssignRole       = `INSERT INTO user_roles(user_id, role_id) VALUES($1, $2);`
 	queryTakeRole         = `DELETE FROM user_roles WHERE user_id = $1 and role_id = $2;`
-	queryGetUserRoleNames = `
-	SELECT r.role_name FROM roles r
-	INNER JOIN user_roles ur ON r.id = ur.role_id
-	WHERE ur.user_id = $1;
-	   `
 )
 
 // LoggingSQLPgqError logs sql errors of type *pgconn.PgError
@@ -89,17 +84,6 @@ func (pg *PgSQLClient) SendsQueryToGetAllRoles(ctx context.Context) (pgx.Rows, e
 	pg.logger.Tracef("Get query: %s", queryGetAllRoles)
 
 	rows, err := pg.client.Query(ctx, queryGetAllRoles)
-	if err != nil {
-		return nil, pg.LoggingSQLPgqError(err)
-	}
-	return rows, nil
-}
-
-// GetUserRoleNames  sends a query to the database to get all role names for user by uuid.
-func (pg *PgSQLClient) SendsQueryToGetUserRoleNames(ctx context.Context, userId string) (pgx.Rows, error) {
-	pg.logger.Tracef("Get query: %s", strings.ReplaceAll(queryGetUserRoleNames, "\n\t", ""))
-
-	rows, err := pg.client.Query(ctx, queryGetUserRoleNames, userId)
 	if err != nil {
 		return nil, pg.LoggingSQLPgqError(err)
 	}

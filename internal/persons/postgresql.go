@@ -10,7 +10,6 @@ import (
 
 	"github.com/stonik02/proxy_service/pkg/db/postgresql"
 	"github.com/stonik02/proxy_service/pkg/logging"
-
 )
 
 type PgSQLInterface interface {
@@ -21,7 +20,7 @@ type PgSQLInterface interface {
 	FindOne(ctx context.Context, id string) (p ResponseUserDto)
 	UpdatePerson(ctx context.Context, person ResponseUserDto) error
 	FindPersonByEmail(ctx context.Context, email string) ResponseUserDto
-	GetPersonDataForAuth(ctx context.Context, dto AuthDto) AuthDto
+	GetPersonDataForAuth(ctx context.Context, dto AuthDto) ResponseUserAuthDto
 }
 
 type PgSQLClient struct {
@@ -43,7 +42,7 @@ const (
 	queryFindPersonById                   = `SELECT id, name, email FROM public.person WHERE id = $1;`
 	queryUpdatePerson                     = `UPDATE public.person SET (name, email) = ($1, $2) WHERE id = $3;`
 	queryFindPersonByEmail                = `SELECT id, name, email FROM public.person WHERE email = $1;`
-	queryGetEmailAndPAsswordPersonForAuth = `SELECT email, hash_password FROM public.person WHERE email = $1`
+	queryGetEmailAndPAsswordPersonForAuth = `SELECT id, name, email, hash_password FROM public.person WHERE email = $1`
 )
 
 // LoggingSQLPgqError logs sql errors of type *pgconn.PgError
@@ -117,9 +116,9 @@ func (pg *PgSQLClient) FindPersonByEmail(ctx context.Context, email string) Resp
 
 // GetPersonDataForAuth sends a query to the database to retrieve a password and email
 // from database for authorization
-func (pg *PgSQLClient) GetPersonDataForAuth(ctx context.Context, dto AuthDto) AuthDto {
+func (pg *PgSQLClient) GetPersonDataForAuth(ctx context.Context, dto AuthDto) ResponseUserAuthDto {
 	pg.logger.Tracef("Get query: %s", queryGetEmailAndPAsswordPersonForAuth)
-	var userData AuthDto
-	pg.client.QueryRow(ctx, queryGetEmailAndPAsswordPersonForAuth, dto.Email).Scan(&userData.Email, &userData.Password)
+	var userData ResponseUserAuthDto
+	pg.client.QueryRow(ctx, queryGetEmailAndPAsswordPersonForAuth, dto.Email).Scan(&userData.Id, &userData.Name, &userData.Email, &userData.Hash_Password)
 	return userData
 }

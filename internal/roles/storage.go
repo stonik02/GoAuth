@@ -8,5 +8,4 @@ type Repository interface {
 	AssignRole(ctx context.Context, dto AssignRoleDto) error
 	TakeRole(ctx context.Context, dto TakeRoleDto) error
 	GetAllRoles(ctx context.Context) ([]Role, error)
-	GetUserRoleNames(ctx context.Context, userId string) (roles []string, err error)
 }

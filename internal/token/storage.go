@@ -1,7 +1,7 @@
 package token
 
 type Repository interface {
-	CreateJWTAccessToken(userID string) (string, error)
-	CreateJWTRefreshToken(userID string) (string, error)
-	TokenVrification(token string) PersonDataInToken
+	CreateJWTAccessToken(person PersonDataInToken) (string, error)
+	CreateJWTRefreshToken(person PersonDataInToken) (string, error)
+	TokenVrification(tokenString string, key string) (PersonDataInToken, error)
 }

@@ -23,41 +23,66 @@ func NewRepository(logger *logging.Logger, cfg config.Config) Repository {
 	}
 }
 
-func (r *repository) TokenVrification(token string) PersonDataInToken {
-	// Заглушка
-	return PersonDataInToken{
-		Id: "43fb1c66-b6ed-4af0-9906-6bbadf91aee0",
-	}
-}
+func (r *repository) TokenVrification(tokenString string, key string) (PersonDataInToken, error) {
+	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+		// Don't forget to validate the alg is what you expect:
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			newErr := fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+			r.logger.Errorf(newErr.Error())
+			return nil, newErr
+		}
 
-type CustomerInfo struct {
-	Id string
-}
-
-type CustomClaimsExample struct {
-	*jwt.StandardClaims
-	TokenType string
-	CustomerInfo
-}
-
-func (r *repository) CreateJWTAccessToken(userID string) (string, error) {
-	key := r.cfg.JWT.AccessKey
-
-	payload := jwt.MapClaims{
-		"id":  userID,
-		"exp": time.Now().Add(time.Hour * 72).Unix(),
-	}
-
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, payload)
-	t, err := token.SignedString([]byte(key))
+		// hmacSampleSecret is a []byte containing your secret, e.g. []byte("my_secret_key")
+		return []byte(key), nil
+	})
 	if err != nil {
-		r.logger.Error(err)
+		newErr := fmt.Errorf("Error parse token")
+		return PersonDataInToken{}, newErr
+	}
+
+	if claims, ok := token.Claims.(jwt.MapClaims); ok {
+		return PersonDataInToken{
+			Id:    fmt.Sprintf("%s", claims["uid"]),
+			Email: fmt.Sprintf("%s", claims["email"]),
+		}, nil
+	} else {
+		return PersonDataInToken{}, err
+	}
+}
+
+// CreateJWTAccessToken создает jwt access token, в который включен userId.
+// Токен действителен 1 час
+func (r *repository) CreateJWTAccessToken(person PersonDataInToken) (string, error) {
+	secretKey := r.cfg.JWT.AccessKey
+	token := jwt.New(jwt.SigningMethodHS256)
+
+	claims := token.Claims.(jwt.MapClaims)
+	claims["uid"] = person.Id
+	claims["email"] = person.Email
+	claims["exp"] = time.Now().Add(time.Hour).Unix()
+
+	tokenString, err := token.SignedString([]byte(secretKey))
+	if err != nil {
 		return "", err
 	}
-	fmt.Printf("token = %s", t)
-	return t, nil
+	return tokenString, nil
 }
 
-func (r *repository) CreateJWTRefreshToken(userID string) (string, error) {
-	panic("CreateJWTRefreshToken")
+// CreateJWTRefreshToken создает jwt refresh token, в который включен userId.
+// Токен действителен 1 месяц
+func (r *repository) CreateJWTRefreshToken(person PersonDataInToken) (string, error) {
+	secretKey := r.cfg.JWT.AccessKey
+	token := jwt.New(jwt.SigningMethodHS256)
+
+	claims := token.Claims.(jwt.MapClaims)
+	claims["uid"] = person.Id
+	claims["email"] = person.Email
+	claims["exp"] = time.Now().Add(time.Hour).Unix()
+
+	tokenString, err := token.SignedString([]byte(secretKey))
+	if err != nil {
+		return "", err
+	}
+
+	return tokenString, nil
 }

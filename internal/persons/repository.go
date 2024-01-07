@@ -8,7 +8,6 @@ import (
 	"golang.org/x/crypto/bcrypt"
 
 	"github.com/stonik02/proxy_service/pkg/logging"
-
 )
 
 type repository struct {
@@ -157,7 +156,10 @@ func (r *repository) FindByEmail(ctx context.Context, email string) (ResponseUse
 // AuthPerson сomparing the data entered by the user
 // with the data in the database to authorize the user.
 // If the data is valid, returns true, otherwise returns false.
-func (r *repository) AuthPerson(ctx context.Context, dto AuthDto) bool {
+func (r *repository) AuthPerson(ctx context.Context, dto AuthDto) (ResponseUserAuthDto, error) {
 	userData := r.pgClient.GetPersonDataForAuth(ctx, dto)
-	return CheckPasswordHash(dto.Password, userData.Password)
+	if CheckPasswordHash(dto.Password, userData.Hash_Password) {
+		return userData, nil
+	}
+	return ResponseUserAuthDto{}, fmt.Errorf("Wrong data")
 }

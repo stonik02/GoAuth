@@ -12,8 +12,8 @@ type AuthDto struct {
 }
 
 type AuthResponseDto struct {
-	accessToken  string
-	refreshToken string
+	AccessToken  string `json:"access"`
+	RefreshToken string `json:"refresh"`
 }
 
 type RefreshDto struct {
