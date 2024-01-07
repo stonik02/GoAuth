@@ -8,8 +8,9 @@ import (
 	"github.com/jackc/pgconn"
 	"github.com/jackc/pgx/v4"
 
+	"github.com/stonik02/proxy_service/pkg/db/postgresql"
 	"github.com/stonik02/proxy_service/pkg/logging"
-	"github.com/stonik02/proxy_service/pkg/logging/db/postgresql"
+
 )
 
 type PgSQLInterface interface {
@@ -60,9 +61,11 @@ func (pg *PgSQLClient) LoggingSQLPgqError(err error) error {
 // CreatePerson sends a query to the database to add a new person.
 func (pg *PgSQLClient) CreatePersonInDB(ctx context.Context, person *Person) error {
 	pg.logger.Tracef("Get query: %s", queryCreatePerson)
+	fmt.Printf("\n\n\n\n person = %s", person)
 
-	err := pg.client.QueryRow(ctx, queryCreatePerson, person.Name, person.Email, HashPassword).Scan(&person.Id)
+	err := pg.client.QueryRow(ctx, queryCreatePerson, person.Name, person.Email, person.Password).Scan(&person.Id)
 	if err != nil {
+		pg.logger.Tracef("err create user = %s", err.Error())
 		return pg.LoggingSQLPgqError(err)
 	}
 	return nil

@@ -5,8 +5,8 @@ import (
 	"fmt"
 
 	person "github.com/stonik02/proxy_service/internal/persons"
+	"github.com/stonik02/proxy_service/pkg/db/postgresql"
 	"github.com/stonik02/proxy_service/pkg/logging"
-	"github.com/stonik02/proxy_service/pkg/logging/db/postgresql"
 
 )
 
@@ -41,6 +41,7 @@ func (r *repository) RegisterPerson(ctx context.Context, dto RegisterDto) (*pers
 		return nil, err
 	}
 
+	r.logger.Tracef("dto create user = %s", dto)
 	newPerson := person.Person{
 		Name:     dto.Name,
 		Email:    dto.Email,

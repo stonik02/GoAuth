@@ -84,9 +84,15 @@ func (h *handler) CreateUser(w http.ResponseWriter, r *http.Request, params http
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		w.Write([]byte("Bad Request"))
+		return
 	}
 
 	allBytes, err := json.Marshal(prs)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("Bad Request"))
+		return
+	}
 
 	w.WriteHeader(201)
 	w.Write([]byte(allBytes))

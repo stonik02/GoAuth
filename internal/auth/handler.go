@@ -11,6 +11,7 @@ import (
 	"github.com/stonik02/proxy_service/internal/handlers"
 	"github.com/stonik02/proxy_service/internal/persons"
 	"github.com/stonik02/proxy_service/pkg/logging"
+	"github.com/stonik02/proxy_service/pkg/middleware"
 )
 
 var _ handlers.Handler = &handler{}
@@ -22,17 +23,21 @@ const (
 )
 
 type handler struct {
-	repository Repository
-	logger     logging.Logger
+	repository                Repository
+	logger                    logging.Logger
+	checkPermissionMiddleware middleware.AuthorizedRoleMiddleware
 }
 
-func NewHandler(logger logging.Logger, repository Repository) handlers.Handler {
-	return &handler{logger: logger, repository: repository}
+func NewHandler(logger logging.Logger, repository Repository, checkPermissionMiddleware middleware.AuthorizedRoleMiddleware) handlers.Handler {
+	return &handler{logger: logger,
+		repository:                repository,
+		checkPermissionMiddleware: checkPermissionMiddleware,
+	}
 }
 
 func (h *handler) Register(router *httprouter.Router) {
 	router.POST(registerURL, h.Registration)
-	router.POST(authURL, h.Auth)
+	router.POST(authURL, h.checkPermissionMiddleware.BasicAuth(h.Auth, "is_admin"))
 	router.POST(refreshURL, h.Refresh)
 
 }

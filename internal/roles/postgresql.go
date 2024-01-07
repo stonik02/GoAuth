@@ -9,8 +9,8 @@ import (
 	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v5/pgconn"
 
+	"github.com/stonik02/proxy_service/pkg/db/postgresql"
 	"github.com/stonik02/proxy_service/pkg/logging"
-	"github.com/stonik02/proxy_service/pkg/logging/db/postgresql"
 )
 
 type PgSQLInterface interface {

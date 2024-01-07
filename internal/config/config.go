@@ -4,7 +4,9 @@ import (
 	"sync"
 
 	"github.com/ilyakaznacheev/cleanenv"
+
 	"github.com/stonik02/proxy_service/pkg/logging"
+
 )
 
 type Config struct {
@@ -15,6 +17,10 @@ type Config struct {
 		Port   string `yaml:"port" env-default:"8080"`
 	} `yaml:"listen"`
 	Storage StorageConfig `yaml:"storage"`
+	JWT     struct {
+		AccessKey  string `yaml:"accessKey"`
+		RefreshKey string `yaml:"refreshKey"`
+	}
 }
 
 type StorageConfig struct {

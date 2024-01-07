@@ -5,8 +5,10 @@ import (
 	"fmt"
 
 	"github.com/jackc/pgx/v4"
-	"github.com/stonik02/proxy_service/pkg/logging"
 	"golang.org/x/crypto/bcrypt"
+
+	"github.com/stonik02/proxy_service/pkg/logging"
+
 )
 
 type repository struct {
@@ -92,7 +94,7 @@ func (r *repository) Create(ctx context.Context, person *Person) error {
 	// Create Person in DB
 	err = r.pgClient.CreatePersonInDB(ctx, person)
 	if err != nil {
-		// SQL Error
+		r.logger.Errorf("SQL error ((( error = %s", err)
 		return err
 	}
 	return nil
