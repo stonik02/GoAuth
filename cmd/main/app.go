@@ -11,16 +11,17 @@ import (
 
 	"github.com/stonik02/proxy_service/internal/auth"
 	"github.com/stonik02/proxy_service/internal/config"
-	"github.com/stonik02/proxy_service/internal/persons"
+	person "github.com/stonik02/proxy_service/internal/persons"
 	"github.com/stonik02/proxy_service/internal/roles"
 	"github.com/stonik02/proxy_service/internal/token"
+	utils "github.com/stonik02/proxy_service/internal/util/middleware"
 	"github.com/stonik02/proxy_service/pkg/db/postgresql"
 	"github.com/stonik02/proxy_service/pkg/logging"
 	"github.com/stonik02/proxy_service/pkg/middleware"
 )
 
-// TODO: JWT сделал, теперь сделать refresh и привязать к auth
-// TODO: Сделать middleware на permission к разным ручкам
+// TODO: JWT сделал, теперь сделать refresh
+// TODO: В middleware для update user сделать проверку, что это сам юзер или админ??
 // TODO: Сделать возможность сразу присваивать несколько ролей
 // TODO: Сделать валидацию данных
 
@@ -40,18 +41,22 @@ func main() {
 
 	rolesSQLClient := roles.NewPgClient(dbClient, &logger)
 	personSQLClient := person.NewPgClient(dbClient, &logger)
+	utilsSQLClient := utils.NewPgClient(dbClient, &logger)
+	utilsRepository := utils.NewRepository(&logger, utilsSQLClient)
 	personRepository := person.NewRepository(&logger, personSQLClient)
-	authRepository := auth.NewRepository(dbClient, &logger, personRepository)
-	rolesRepository := roles.NewRepository(&logger, rolesSQLClient)
 	tokenRepository := token.NewRepository(&logger, *cfg)
+	authRepository := auth.NewRepository(dbClient, &logger, personRepository, tokenRepository)
+	rolesRepository := roles.NewRepository(&logger, rolesSQLClient)
 
 	checkPermissionMiddleware := middleware.AuthorizedRoleMiddleware{
-		RolesRepository: rolesRepository,
+		UtilsRepository: *utilsRepository,
 		TokenRepository: tokenRepository,
+		Cfg:             *cfg,
+		Logger:          &logger,
 	}
 
 	logger.Info("register person handler")
-	personHandler := person.NewHandler(logger, personRepository)
+	personHandler := person.NewHandler(logger, personRepository, checkPermissionMiddleware)
 	personHandler.Register(router)
 
 	logger.Info("register auth handler")
@@ -59,7 +64,7 @@ func main() {
 	authHandler.Register(router)
 
 	logger.Info("register roles handler")
-	rolesHandler := roles.NewHandler(logger, rolesRepository)
+	rolesHandler := roles.NewHandler(logger, rolesRepository, checkPermissionMiddleware)
 	rolesHandler.Register(router)
 
 	start(router, cfg)
